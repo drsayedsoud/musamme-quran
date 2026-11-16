@@ -1,0 +1,627 @@
+/* خطوط المصحف والواجهة */
+@font-face {
+  font-family: 'UthmanicHafs';
+  src: url('./uthmanic-hafs.woff2') format('woff2');
+  font-display: swap;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Tajawal:wght@400;500;700;800&display=swap');
+
+:root {
+  --bg-primary: #0a1412;
+  --bg-secondary: #10221e;
+  --bg-card: #152b26;
+  --bg-card-hover: #1c3832;
+  
+  --primary-gold: #d4af37;
+  --gold-glow: rgba(212, 175, 55, 0.25);
+  --primary-green: #10b981;
+  --green-glow: rgba(16, 185, 129, 0.3);
+  
+  --danger-red: #ef4444;
+  --danger-glow: rgba(239, 68, 68, 0.35);
+  
+  --text-primary: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-faint: rgba(255, 255, 255, 0.15);
+  
+  --border-color: rgba(212, 175, 55, 0.18);
+  --border-active: rgba(212, 175, 55, 0.6);
+
+  --font-quran: 'UthmanicHafs', 'Amiri', serif;
+  --font-ui: 'Tajawal', sans-serif;
+  
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 24px;
+  --radius-full: 9999px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-ui);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  direction: rtl;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  user-select: none;
+}
+
+/* حاوية التطبيق المركزية (Mobile-First) */
+.app-container {
+  max-width: 600px;
+  width: 100%;
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+}
+
+/* الترويسة العلوية */
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 1.25rem;
+}
+
+.logo-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.logo-icon {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, var(--primary-gold), #b89320);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  color: #0d1b1e;
+  font-weight: bold;
+}
+
+.logo-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
+}
+
+.logo-subtitle {
+  font-size: 0.75rem;
+  color: var(--primary-gold);
+  font-weight: 500;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-icon {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-icon:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--primary-gold);
+}
+
+.btn-pwa-install {
+  display: none;
+  background: linear-gradient(135deg, var(--primary-gold), #b89320);
+  color: #0d1b1e;
+  border: none;
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* الشاشات (View Routing) */
+.view {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+}
+
+.view.active {
+  display: flex;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* شاشة الإعداد (Setup View) */
+.setup-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--primary-gold);
+  display: flex;
+  justify-content: space-between;
+}
+
+.form-select, .form-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.form-select:focus, .form-input:focus {
+  border-color: var(--primary-gold);
+  box-shadow: 0 0 0 2px var(--gold-glow);
+}
+
+.range-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.quick-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
+}
+
+.pill-btn {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  padding: 0.3rem 0.75rem;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pill-btn:hover, .pill-btn.active {
+  background: var(--primary-gold);
+  color: #0a1412;
+  font-weight: 700;
+  border-color: var(--primary-gold);
+}
+
+/* اختيار وضع التسميع */
+.mode-toggle-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  padding: 0.3rem;
+  gap: 0.3rem;
+  border: 1px solid var(--border-color);
+}
+
+.mode-btn {
+  background: transparent;
+  border: none;
+  padding: 0.65rem 0.5rem;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.mode-btn.active {
+  background: var(--bg-card);
+  color: var(--primary-gold);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  font-weight: 700;
+}
+
+.toggle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.4rem 0;
+}
+
+.toggle-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  transition: .3s;
+  border-radius: 34px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  right: 3px;
+  bottom: 3px;
+  background-color: var(--text-muted);
+  transition: .3s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: var(--primary-green);
+  border-color: var(--primary-green);
+}
+
+input:checked + .slider:before {
+  transform: translateX(-20px);
+  background-color: white;
+}
+
+.btn-start-recitation {
+  background: linear-gradient(135deg, var(--primary-gold), #b89320);
+  color: #0a1412;
+  border: none;
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  font-size: 1.15rem;
+  font-weight: 800;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 15px var(--gold-glow);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-start-recitation:active {
+  transform: scale(0.98);
+}
+
+/* شاشة التسميع المباشر (Recitation View) */
+.recite-header-bar {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.65rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.surah-badge {
+  font-weight: 800;
+  color: var(--primary-gold);
+  font-size: 1.05rem;
+}
+
+.stats-badge-group {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-full);
+  background: var(--bg-card);
+}
+
+.stat-item.mistakes {
+  color: var(--danger-red);
+}
+
+.stat-item.ayah {
+  color: var(--primary-green);
+}
+
+/* لوحة النص القرآني */
+.quran-canvas {
+  flex: 1;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  overflow-y: auto;
+  max-height: 55vh;
+  line-height: 2.5;
+  text-align: justify;
+  font-family: var(--font-quran);
+  font-size: 1.65rem;
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+
+/* نمط الكلمات المفردة */
+.quran-word {
+  display: inline-block;
+  padding: 0.05rem 0.25rem;
+  margin: 0.1rem 0.15rem;
+  border-radius: var(--radius-sm);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+/* وضع الحافظ (إخفاء النص حتى ينطقه الحافظ) */
+.mode-hafiz .quran-word.pending {
+  color: transparent;
+  background: rgba(255, 255, 255, 0.05);
+  border-bottom: 2px dashed rgba(212, 175, 55, 0.3);
+  user-select: none;
+}
+
+/* وضع المراجعة (نص خافت) */
+.mode-review .quran-word.pending {
+  color: var(--text-faint);
+}
+
+/* الكلمة النشطة حالياً التي ينتظرها التطبيق */
+.quran-word.active {
+  color: var(--primary-gold) !important;
+  background: var(--gold-glow) !important;
+  box-shadow: 0 0 10px var(--gold-glow);
+  transform: scale(1.05);
+  animation: pulseWord 1.5s infinite;
+}
+
+@keyframes pulseWord {
+  0% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.4); }
+  70% { box-shadow: 0 0 0 8px rgba(212, 175, 55, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0); }
+}
+
+/* الكلمة التي تم نطقها بنجاح */
+.quran-word.correct {
+  color: #34d399 !important;
+  background: rgba(16, 185, 129, 0.12);
+}
+
+/* الكلمة التي حصل فيها خطأ أو نسيان */
+.quran-word.mistake {
+  color: var(--danger-red) !important;
+  background: var(--danger-glow) !important;
+  box-shadow: 0 0 12px var(--danger-glow);
+  font-weight: bold;
+  animation: shake 0.4s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+/* فاصل وفاصلة أرقام الآيات */
+.ayah-end-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin: 0 0.35rem;
+  border: 1px solid var(--primary-gold);
+  border-radius: var(--radius-full);
+  color: var(--primary-gold);
+  font-size: 0.95rem;
+  font-family: var(--font-ui);
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+/* شريط التحكم السفلي الكبير (Mic Floating Bar) */
+.recite-controls-bar {
+  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
+  padding: 0.6rem 1rem;
+}
+
+.btn-mic-large {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, var(--primary-gold), #b89320);
+  border: none;
+  color: #0a1412;
+  font-size: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 6px 20px var(--gold-glow);
+  transition: all 0.25s ease;
+  position: relative;
+}
+
+.btn-mic-large.listening {
+  background: linear-gradient(135deg, var(--primary-green), #059669);
+  color: white;
+  animation: micRipple 1.8s infinite;
+}
+
+@keyframes micRipple {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+  70% { box-shadow: 0 0 0 16px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.btn-action-round {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-full);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.15rem;
+  transition: all 0.2s ease;
+}
+
+.btn-action-round:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--primary-gold);
+}
+
+.btn-action-round.danger {
+  color: var(--danger-red);
+}
+
+/* نافذة ملخص النتائج (Modal) */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(6px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 1000;
+}
+
+.modal-overlay.active {
+  display: flex;
+  animation: fadeIn 0.25s ease;
+}
+
+.modal-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  max-width: 480px;
+  width: 100%;
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  text-align: center;
+}
+
+.score-circle {
+  width: 90px;
+  height: 90px;
+  border-radius: var(--radius-full);
+  border: 4px solid var(--primary-green);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--primary-green);
+  box-shadow: 0 0 20px var(--green-glow);
+}
+
+.mistakes-list {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  padding: 0.75rem;
+  max-height: 150px;
+  overflow-y: auto;
+  text-align: right;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.mistake-item {
+  padding: 0.3rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  justify-content: space-between;
+}
+
+.mistake-word {
+  color: var(--danger-red);
+  font-weight: bold;
+}
+
+.modal-btn-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>مُسَمِّع | رفيق حفظ القرآن الذكي</title>
+  
+  <meta name="description" content="تطبيق ذكي لتسميع القرآن الكريم ومقارنة الحفظ لحظياً والتنبيه بالصوت والاهتزاز عند الخطأ">
+  <meta name="theme-color" content="#0a1412">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="مُسَمِّع">
+  
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="app-container">
+    <!-- الترويسة العلوية -->
+    <header class="app-header">
+      <div class="logo-wrap">
+        <div class="logo-icon">📖</div>
+        <div>
+          <h1 class="logo-title">مُسَمِّع</h1>
+          <p class="logo-subtitle">رفيق التسميع والحفظ المتقن</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- زر تثبيت التطبيق PWA -->
+        <button id="btnInstall" class="btn-pwa-install">
+          <span>📲</span> تثبيت
+        </button>
+
+        <!-- زر المشاركة -->
+        <button id="btnShareApp" class="btn-icon" title="مشاركة التطبيق">
+          📤
+        </button>
+
+        <!-- زر كتم/تفعيل التنبيهات -->
+        <button id="btnSoundToggle" class="btn-icon" title="تنبيهات الصوت">
+          🔔
+        </button>
+      </div>
+    </header>
+
+    <!-- 1. شاشة الإعداد واختيار النطاق -->
+    <main id="setupView" class="view active">
+      <div class="setup-card">
+        <!-- اختيار السورة -->
+        <div class="form-group">
+          <label class="form-label" for="surahSelect">
+            <span>اختر السورة</span>
+            <span id="surahInfoBadge" style="color: var(--text-muted); font-size: 0.75rem;">114 سورة</span>
+          </label>
+          <select id="surahSelect" class="form-select">
+            <!-- يتم تعبئة السور برمجياً من quran-data.js -->
+          </select>
+        </div>
+
+        <!-- نطاق الآيات -->
+        <div class="form-group">
+          <label class="form-label">
+            <span>نطاق التسميع</span>
+            <span id="totalAyahsLabel" style="color: var(--text-muted); font-size: 0.75rem;">7 آيات</span>
+          </label>
+          <div class="range-grid">
+            <div>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">من الآية:</span>
+              <input type="number" id="startAyah" class="form-input" min="1" value="1">
+            </div>
+            <div>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">إلى الآية:</span>
+              <input type="number" id="endAyah" class="form-input" min="1" value="7">
+            </div>
+          </div>
+
+          <!-- أزرار الاختيار السريع -->
+          <div class="quick-pills">
+            <button class="pill-btn active" data-range="all">كامل السورة</button>
+            <button class="pill-btn" data-range="first10">أول 10 آيات</button>
+            <button class="pill-btn" data-range="half">نصف السورة</button>
+          </div>
+        </div>
+
+        <!-- نمط العرض (وضع الحافظ أو وضع المراجعة) -->
+        <div class="form-group">
+          <label class="form-label">نمط التسميع</label>
+          <div class="mode-toggle-group">
+            <button id="modeHafizBtn" class="mode-btn active" data-mode="hafiz">
+              <span>🧠 وضع الحافظ</span>
+              <span style="font-size: 0.7rem; font-weight: normal; opacity: 0.8;">إخفاء النص لكشف الحفظ</span>
+            </button>
+            <button id="modeReviewBtn" class="mode-btn" data-mode="review">
+              <span>👁️ وضع المراجعة</span>
+              <span style="font-size: 0.7rem; font-weight: normal; opacity: 0.8;">نص خافت للتتبع</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- خيارات التنبيه -->
+        <div class="form-group" style="border-top: 1px solid var(--border-color); padding-top: 0.75rem;">
+          <div class="toggle-row">
+            <span style="font-size: 0.9rem;">صوت التنبيه عند الخطأ</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="chkAudioAlert" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="toggle-row">
+            <span style="font-size: 0.9rem;">اهتزاز الهاتف عند الخطأ</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="chkVibrateAlert" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- زر بدء التسميع -->
+        <button id="btnStart" class="btn-start-recitation">
+          <span>ابدأ التسميع</span>
+          <span style="font-size: 1.4rem;">🎙️</span>
+        </button>
+      </div>
+    </main>
+
+    <!-- 2. شاشة التسميع المباشر -->
+    <main id="reciteView" class="view">
+      <!-- شريط معلومات الآية والأخطاء -->
+      <div class="recite-header-bar">
+        <div class="surah-badge" id="reciteSurahTitle">سورة الفاتحة</div>
+        
+        <div class="stats-badge-group">
+          <div class="stat-item ayah" title="الآية الحالية">
+            <span>آية:</span>
+            <b id="currentAyahBadge">1</b>
+          </div>
+          <div class="stat-item mistakes" title="عدد الأخطاء">
+            <span>أخطاء:</span>
+            <b id="mistakesCountBadge">0</b>
+          </div>
+        </div>
+
+        <button id="btnExitRecite" class="btn-action-round danger" title="إنهاء الجلسة">
+          ✕
+        </button>
+      </div>
+
+      <!-- لوحة النص القرآني -->
+      <div id="quranCanvas" class="quran-canvas mode-hafiz">
+        <!-- يتم بناء الكلمات برمجياً كعناصر قابلة للتفاعل -->
+      </div>
+
+      <!-- أزرار التحكم السفلية -->
+      <div class="recite-controls-bar">
+        <!-- زر إعادة الآية الحالية -->
+        <button id="btnRepeatAyah" class="btn-action-round" title="إعادة الآية الحالية">
+          🔄
+        </button>
+
+        <!-- زر الميكروفون الرئيسي -->
+        <button id="btnMicToggle" class="btn-mic-large" title="إيقاف/استئناف الاستماع">
+          🎙️
+        </button>
+
+        <!-- زر إنهاء وحساب النتيجة -->
+        <button id="btnFinishRecite" class="btn-action-round" title="إتمام التسميع">
+          ✓
+        </button>
+      </div>
+    </main>
+
+    <!-- 3. نافذة ملخص النتائج المنبثقة -->
+    <div id="resultsModal" class="modal-overlay">
+      <div class="modal-card">
+        <div style="font-size: 2.5rem;">🌟</div>
+        <h2 style="color: var(--primary-gold);">تقبل الله تلاوتكم</h2>
+        
+        <div class="score-circle">
+          <span id="scorePercent">100%</span>
+        </div>
+
+        <div style="font-size: 0.9rem; color: var(--text-muted);" id="resultsSummaryText">
+          أتممت تسميع 7 آيات بإتقان
+        </div>
+
+        <!-- قائمة الكلمات التي حدث بها زلل -->
+        <div id="mistakesSection" style="display: none; text-align: right;">
+          <div style="font-size: 0.85rem; font-weight: bold; color: var(--danger-red); margin-bottom: 0.3rem;">
+            كلمات للمراجعة والتثبيت:
+          </div>
+          <div id="mistakesList" class="mistakes-list">
+            <!-- يتم تعبئة الكلمات برمجياً -->
+          </div>
+        </div>
+
+        <div class="modal-btn-group">
+          <button id="btnRetry" class="btn-start-recitation" style="padding: 0.75rem; font-size: 0.95rem;">
+            إعادة التسميع
+          </button>
+          <button id="btnNextSection" class="pill-btn" style="padding: 0.75rem; font-size: 0.95rem; font-weight: bold;">
+            الآيات التالية
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- تسجيل Service Worker للعمل أوفلاين -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js').catch(err => {
+          console.warn('ServiceWorker registration failed: ', err);
+        });
+      });
+    }
+  </script>
+
+  <!-- التطبيق الأساسي -->
+  <script type="module" src="app.js"></script>
+</body>
+</html>
