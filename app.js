@@ -1,6 +1,6 @@
 /**
  * مُسَمِّع - المتحكم الرئيسي للتطبيق (Application Controller)
- * مع خاصية "الفتح على القارئ" بنطق الكلمة الصحيحة بصوت الشيخ كلمة بكلمة
+ * معالجة ذكية للكلمات ومنع التنبيهات الكاذبة والتصحيح بصوت الشيخ
  */
 
 import { SURAHS } from './quran-data.js';
@@ -10,7 +10,7 @@ import { SpeechEngine } from './speech-engine.js';
 
 class MusammeApp {
   constructor() {
-    this.quranData = null; // سيتم تحميله من quran-uthmani.json
+    this.quranData = null;
     this.speechEngine = new SpeechEngine();
 
     // حالة جلسة التسميع الحالية
@@ -234,11 +234,11 @@ class MusammeApp {
     });
   }
 
-  // إعداد استجابات التعرف الصوتي
+  // إعداد استجابات التعرف الصوتي (معالجة كلمة بكلمة بدقة)
   setupSpeechCallbacks() {
-    this.speechEngine.onWordsRecognized = (words) => {
-      if (this.isProcessingMistake) return; // عدم التداخل أثناء نطق التصحيح
-      this.processSpokenWords(words);
+    this.speechEngine.onWordRecognized = (token) => {
+      if (this.isProcessingMistake) return; // منع التداخل أثناء نطق التصحيح
+      this.handleSpokenToken(token);
     };
 
     this.speechEngine.onStateChange = ({ listening, paused }) => {
@@ -304,12 +304,14 @@ class MusammeApp {
     // ضبط نمط العرض
     this.dom.quranCanvas.className = `quran-canvas mode-${this.recitationMode}`;
 
-    // الانتقال لشاشة التسميع وبدء الاستماع
+    // الانتقال لشاشة التسميع وبدء الاستماع بعد انقضاء رنين البدء
     this.showView('reciteView');
     this.highlightActiveWord();
     
     feedback.playStartChime();
-    this.speechEngine.start();
+    setTimeout(() => {
+      this.speechEngine.start();
+    }, 350);
   }
 
   // رسم كلمات الآيات في لوحة القراءة
@@ -331,7 +333,7 @@ class MusammeApp {
       span.className = 'quran-word pending';
       span.textContent = wordObj.uthmani;
       
-      // النقر على الكلمة للاستماع إليها مباشرة
+      // النقر على الكلمة للاستماع إليها مباشرة بصوت الشيخ
       span.addEventListener('click', () => {
         feedback.playWordAudio(wordObj.surah, wordObj.ayah, wordObj.position);
       });
@@ -350,7 +352,7 @@ class MusammeApp {
     }
   }
 
-  // إبراز الكلمة المتوقعة التالية
+  // إبراز الكلمة المتوقعة التالية بنبض هادئ
   highlightActiveWord() {
     if (this.currentWordIndex >= this.wordsList.length) return;
 
@@ -373,54 +375,54 @@ class MusammeApp {
     }
   }
 
-  // معالجة تدفق الكلمات المنطوقة من الميكروفون
-  async processSpokenWords(spokenTokens) {
+  // المعالجة الدقيقة للكلمة المنطوقة من الميكروفون
+  async handleSpokenToken(token) {
     if (this.currentWordIndex >= this.wordsList.length) return;
 
-    for (const spoken of spokenTokens) {
-      if (this.currentWordIndex >= this.wordsList.length) break;
+    const spoken = token.text;
+    const isFinal = token.isFinal;
+    const expected = this.wordsList[this.currentWordIndex];
 
-      const expected = this.wordsList[this.currentWordIndex];
+    // 1. هل الكلمة المنطوقة تطابق الكلمة الحالية المتوقعة؟
+    if (isWordMatch(spoken, expected.uthmani)) {
+      this.markWordCorrect(this.currentWordIndex);
+      this.currentWordIndex++;
+      this.highlightActiveWord();
 
-      // 1. فحص هل الكلمة مطابقة للكلمة المتوقعة الحالية
-      if (isWordMatch(spoken, expected.uthmani)) {
-        this.markWordCorrect(this.currentWordIndex);
+      // فحص إتمام كامل الآيات
+      if (this.currentWordIndex >= this.wordsList.length) {
+        setTimeout(() => this.finishSession(), 500);
+      }
+      return;
+    }
+
+    // 2. هل القارئ تجاوز كلمة (نسيها) وانتقل للكلمة التي تليها مباشرة؟
+    if (this.currentWordIndex + 1 < this.wordsList.length) {
+      const nextExpected = this.wordsList[this.currentWordIndex + 1];
+      if (isWordMatch(spoken, nextExpected.uthmani)) {
+        // نعم! القارئ نسي الكلمة الحالية وقرأ الكلمة التالية
+        await this.markWordMistake(this.currentWordIndex, 'نسيان أو تجاوز كلمة');
+        
+        // تأكيد الكلمة المقروءة والتقدم للأمام
+        this.currentWordIndex++; // تجاوز الكلمة المنسية
+        this.markWordCorrect(this.currentWordIndex); // تمييز الكلمة التي نطقها
         this.currentWordIndex++;
         this.highlightActiveWord();
-        continue;
-      }
 
-      // 2. فحص هل القارئ تجاوز كلمة (نسيها) وانتقل للكلمة التي تليها مباشرة!
-      if (this.currentWordIndex + 1 < this.wordsList.length) {
-        const nextExpected = this.wordsList[this.currentWordIndex + 1];
-        if (isWordMatch(spoken, nextExpected.uthmani)) {
-          // تسجيل ونطق الكلمة التي تم نسيانها كخطأ وتصحيح
-          await this.markWordMistake(this.currentWordIndex, 'نسيان أو تجاوز كلمة');
-          
-          // تأكيد الكلمة الحالية والانتقال لما بعدها
-          this.currentWordIndex++;
-          this.markWordCorrect(this.currentWordIndex);
-          this.currentWordIndex++;
-          this.highlightActiveWord();
-          continue;
+        if (this.currentWordIndex >= this.wordsList.length) {
+          setTimeout(() => this.finishSession(), 500);
         }
-      }
-
-      // 3. إذا لم تطابق الحالية ولا التالية، وبينهما تشابه بسيط (زلل لفظي)
-      const normSpoken = normalizeQuranText(spoken);
-      if (normSpoken.length >= 3 && !['في', 'من', 'على', 'ما', 'لا', 'ان'].includes(normSpoken)) {
-        // خطأ نطق واضح في الكلمة الحالية
-        await this.markWordMistake(this.currentWordIndex, `نطق "${spoken}" بدلاً من "${expected.uthmani}"`);
+        return;
       }
     }
 
-    // فحص إتمام كامل الآيات
-    if (this.currentWordIndex >= this.wordsList.length) {
-      this.finishSession();
-    }
+    // ملاحظة أمان جوهرية:
+    // إذا كانت الكلمة غير مطابقة، لا نقوم أبداً بتمييز الكلمة الحالية كخطأ تلقائياً!
+    // لأن القارئ قد يكون لم يكمل نطق الكلمة بعد، أو هناك صوت تنفس/ضوضاء في الخلفية.
+    // تظل الكلمة تنتظر القارئ حتى ينطقها بشكل سليم.
   }
 
-  // تمييز الكلمة بأنها صحيحة
+  // تمييز الكلمة بأنها صحيحة (باللون الأخضر)
   markWordCorrect(index) {
     const el = document.getElementById(`qword-${index}`);
     if (el) {
@@ -430,10 +432,11 @@ class MusammeApp {
     if (wordObj) {
       wordObj.status = 'correct';
       
-      // إذا كانت آخر كلمة في الآية، نغمة نجاح خفيفة
+      // إذا كانت آخر كلمة في الآية، نغمة نجاح خفيفة وتفريغ البفر لتبدأ الآية التالية نظيفة
       const isLastInAyah = (index === this.wordsList.length - 1) || (this.wordsList[index + 1].ayah !== wordObj.ayah);
       if (isLastInAyah) {
         feedback.playAyahSuccess();
+        this.speechEngine.clearBuffer(); // تفريغ أي كلمات قديمة من الآية السابقة!
       }
     }
   }
@@ -522,6 +525,9 @@ class MusammeApp {
     // العثور على أول كلمة في هذه الآية
     const firstWordIndex = this.wordsList.findIndex(w => w.ayah === currentAyah);
     if (firstWordIndex !== -1) {
+      // تصفير بفر الصوت
+      this.speechEngine.clearBuffer();
+
       // إعادة تصفير حالة كلمات الآية من نقطة البداية
       for (let i = firstWordIndex; i <= this.currentWordIndex; i++) {
         const el = document.getElementById(`qword-${i}`);
