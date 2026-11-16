@@ -1,12 +1,13 @@
 /**
  * مُسَمِّع - المتحكم الرئيسي للتطبيق (Application Controller)
- * معالجة ذكية للكلمات ومنع التنبيهات الكاذبة والتصحيح بصوت الشيخ
+ * مع إدارة محرك الذكاء الاصطناعي المزدوج (سحابي / محلي أوفلاين)
  */
 
 import { SURAHS } from './quran-data.js';
 import { feedback } from './audio-feedback.js';
 import { parseAyahIntoWords, isWordMatch, normalizeQuranText } from './quran-matcher.js';
 import { SpeechEngine } from './speech-engine.js';
+import { offlineAIService } from './offline-ai-service.js';
 
 class MusammeApp {
   constructor() {
@@ -17,7 +18,7 @@ class MusammeApp {
     this.currentSurah = null;
     this.startAyahNum = 1;
     this.endAyahNum = 7;
-    this.recitationMode = 'hafiz'; // 'hafiz' | 'review'
+    this.recitationMode = 'hafiz';
 
     this.wordsList = [];
     this.currentWordIndex = 0;
@@ -32,11 +33,27 @@ class MusammeApp {
       setupView: document.getElementById('setupView'),
       reciteView: document.getElementById('reciteView'),
       resultsModal: document.getElementById('resultsModal'),
+      settingsModal: document.getElementById('settingsModal'),
 
       // أزرار ترويسة
       btnInstall: document.getElementById('btnInstall'),
+      btnOpenSettings: document.getElementById('btnOpenSettings'),
+      btnCloseSettings: document.getElementById('btnCloseSettings'),
+      btnSaveSettings: document.getElementById('btnSaveSettings'),
       btnShareApp: document.getElementById('btnShareApp'),
       btnSoundToggle: document.getElementById('btnSoundToggle'),
+      activeEngineBadge: document.getElementById('activeEngineBadge'),
+
+      // خيارات محرك الذكاء الاصطناعي
+      optEngineCloud: document.getElementById('optEngineCloud'),
+      optEngineOffline: document.getElementById('optEngineOffline'),
+      offlineModelStatusBadge: document.getElementById('offlineModelStatusBadge'),
+      btnDownloadModel: document.getElementById('btnDownloadModel'),
+      btnDeleteModel: document.getElementById('btnDeleteModel'),
+      downloadProgressContainer: document.getElementById('downloadProgressContainer'),
+      progressStatusText: document.getElementById('progressStatusText'),
+      progressPercentText: document.getElementById('progressPercentText'),
+      progressBarFill: document.getElementById('progressBarFill'),
 
       // إعدادات
       surahSelect: document.getElementById('surahSelect'),
@@ -79,6 +96,7 @@ class MusammeApp {
     this.setupEventListeners();
     this.setupSpeechCallbacks();
     this.setupPwaInstall();
+    await this.checkOfflineModelStatus();
     await this.loadQuranData();
   }
 
@@ -118,11 +136,98 @@ class MusammeApp {
     this.dom.endAyah.max = surah.ayahs;
     this.dom.endAyah.value = surah.ayahs;
 
-    // تفعيل حبة "كامل السورة"
     this.dom.quickPills.forEach(p => p.classList.toggle('active', p.dataset.range === 'all'));
   }
 
+  // التحقق من حالة حزمة الذكاء الاصطناعي الأوفلاين
+  async checkOfflineModelStatus() {
+    const isCached = await offlineAIService.isModelCached();
+    if (isCached) {
+      this.dom.offlineModelStatusBadge.textContent = 'جاهز ومثبت ✅';
+      this.dom.offlineModelStatusBadge.className = 'engine-badge offline';
+      this.dom.btnDownloadModel.style.display = 'none';
+      this.dom.btnDeleteModel.style.display = 'inline-flex';
+    } else {
+      this.dom.offlineModelStatusBadge.textContent = 'غير محمل';
+      this.dom.offlineModelStatusBadge.className = 'engine-badge';
+      this.dom.btnDownloadModel.style.display = 'inline-flex';
+      this.dom.btnDeleteModel.style.display = 'none';
+      if (this.speechEngine.engineMode === 'offline') {
+        this.setEngineMode('cloud');
+      }
+    }
+
+    this.updateEngineUI();
+  }
+
+  updateEngineUI() {
+    const mode = this.speechEngine.engineMode;
+    if (mode === 'offline') {
+      this.dom.activeEngineBadge.textContent = '📴 الذكاء الاصطناعي المحلي (أوفلاين)';
+      this.dom.activeEngineBadge.className = 'engine-badge offline';
+      this.dom.optEngineOffline.classList.add('selected');
+      this.dom.optEngineCloud.classList.remove('selected');
+    } else {
+      this.dom.activeEngineBadge.textContent = '🌐 المحرك السحابي السريع';
+      this.dom.activeEngineBadge.className = 'engine-badge cloud';
+      this.dom.optEngineCloud.classList.add('selected');
+      this.dom.optEngineOffline.classList.remove('selected');
+    }
+  }
+
+  setEngineMode(mode) {
+    this.speechEngine.setEngineMode(mode);
+    this.updateEngineUI();
+  }
+
   setupEventListeners() {
+    // نافذة الإعدادات
+    this.dom.btnOpenSettings.addEventListener('click', () => {
+      this.dom.settingsModal.classList.add('active');
+    });
+
+    this.dom.btnCloseSettings.addEventListener('click', () => {
+      this.dom.settingsModal.classList.remove('active');
+    });
+
+    this.dom.btnSaveSettings.addEventListener('click', () => {
+      this.dom.settingsModal.classList.remove('active');
+    });
+
+    // اختيار المحرك السحابي
+    this.dom.optEngineCloud.addEventListener('click', () => {
+      this.setEngineMode('cloud');
+    });
+
+    // اختيار المحرك المحلي الأوفلاين
+    this.dom.optEngineOffline.addEventListener('click', async () => {
+      const isCached = await offlineAIService.isModelCached();
+      if (!isCached) {
+        if (confirm('حزمة الذكاء الاصطناعي المحلي لم يتم تحميلها بعد. هل تريد بدء تحميل الحزمة الآن (39MB) لتعمل بدون إنترنت للأبد؟')) {
+          this.startModelDownload();
+        }
+      } else {
+        this.setEngineMode('offline');
+      }
+    });
+
+    // زر تنزيل النموذج المحلي
+    this.dom.btnDownloadModel.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.startModelDownload();
+    });
+
+    // زر حذف النموذج
+    this.dom.btnDeleteModel.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      if (confirm('هل أنت متأكد من حذف حزمة الذكاء الاصطناعي وتفريغ 39 ميجابايت من هاتفك؟ سيعود التطبيق لاستخدام المحرك السحابي.')) {
+        await offlineAIService.deleteModelFromCache();
+        this.setEngineMode('cloud');
+        await this.checkOfflineModelStatus();
+        alert('تم حذف الحزمة وتفريغ المساحة بنجاح.');
+      }
+    });
+
     // تغيير السورة
     this.dom.surahSelect.addEventListener('change', (e) => {
       this.onSurahChanged(e.target.value);
@@ -201,7 +306,6 @@ class MusammeApp {
       this.repeatCurrentAyah();
     });
 
-    // زر الاستماع لنطق الكلمة الحالية بصوت الشيخ
     this.dom.btnListenWord.addEventListener('click', () => {
       this.listenToCurrentWord();
     });
@@ -234,10 +338,33 @@ class MusammeApp {
     });
   }
 
-  // إعداد استجابات التعرف الصوتي (معالجة كلمة بكلمة بدقة)
+  // تنزيل نموذج الذكاء الاصطناعي مع شريط التقدم
+  async startModelDownload() {
+    this.dom.downloadProgressContainer.style.display = 'flex';
+    this.dom.btnDownloadModel.disabled = true;
+    this.dom.progressStatusText.textContent = 'جاري التنزيل وحفظ الحزمة في هاتفك...';
+
+    try {
+      await offlineAIService.downloadAndInitModel((percent, file) => {
+        this.dom.progressPercentText.textContent = `${percent}%`;
+        this.dom.progressBarFill.style.width = `${percent}%`;
+      });
+
+      this.dom.downloadProgressContainer.style.display = 'none';
+      await this.checkOfflineModelStatus();
+      this.setEngineMode('offline');
+      alert('مبروك! تم تنزيل حزمة الذكاء الاصطناعي بنجاح، التطبيق الآن يتعرف على صوتك بصفر إنترنت تماماً.');
+    } catch (err) {
+      this.dom.downloadProgressContainer.style.display = 'none';
+      this.dom.btnDownloadModel.disabled = false;
+      alert('حدث خطأ أثناء تنزيل الحزمة، يرجى التأكد من اتصال الإنترنت والمحاولة ثانية.');
+    }
+  }
+
+  // إعداد استجابات التعرف الصوتي
   setupSpeechCallbacks() {
     this.speechEngine.onWordRecognized = (token) => {
-      if (this.isProcessingMistake) return; // منع التداخل أثناء نطق التصحيح
+      if (this.isProcessingMistake) return;
       this.handleSpokenToken(token);
     };
 
@@ -293,18 +420,13 @@ class MusammeApp {
       return;
     }
 
-    // بناء الواجهة للكلمات
     this.renderQuranWords();
 
-    // تحديث بيانات الترويسة
     this.dom.reciteSurahTitle.textContent = `سورة ${this.currentSurah.name}`;
     this.dom.currentAyahBadge.textContent = this.startAyahNum;
     this.dom.mistakesCountBadge.textContent = '0';
-
-    // ضبط نمط العرض
     this.dom.quranCanvas.className = `quran-canvas mode-${this.recitationMode}`;
 
-    // الانتقال لشاشة التسميع وبدء الاستماع بعد انقضاء رنين البدء
     this.showView('reciteView');
     this.highlightActiveWord();
     
@@ -320,7 +442,6 @@ class MusammeApp {
     let lastAyah = null;
 
     this.wordsList.forEach((wordObj, idx) => {
-      // وضع علامة نهاية الآية السابقة
       if (lastAyah !== null && wordObj.ayah !== lastAyah) {
         const badge = document.createElement('span');
         badge.className = 'ayah-end-badge';
@@ -333,17 +454,14 @@ class MusammeApp {
       span.className = 'quran-word pending';
       span.textContent = wordObj.uthmani;
       
-      // النقر على الكلمة للاستماع إليها مباشرة بصوت الشيخ
       span.addEventListener('click', () => {
         feedback.playWordAudio(wordObj.surah, wordObj.ayah, wordObj.position);
       });
 
       this.dom.quranCanvas.appendChild(span);
-
       lastAyah = wordObj.ayah;
     });
 
-    // علامة الآية الأخيرة
     if (lastAyah !== null) {
       const badge = document.createElement('span');
       badge.className = 'ayah-end-badge';
@@ -352,22 +470,18 @@ class MusammeApp {
     }
   }
 
-  // إبراز الكلمة المتوقعة التالية بنبض هادئ
+  // إبراز الكلمة المتوقعة التالية
   highlightActiveWord() {
     if (this.currentWordIndex >= this.wordsList.length) return;
 
-    // إزالة النشاط السابق
     document.querySelectorAll('.quran-word.active').forEach(el => el.classList.remove('active'));
 
     const currentEl = document.getElementById(`qword-${this.currentWordIndex}`);
     if (currentEl) {
       currentEl.classList.remove('pending');
       currentEl.classList.add('active');
-
-      // التمرير التلقائي السلس نحو الكلمة
       currentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-      // تحديث رقم الآية الحالية في الشريط
       const activeWord = this.wordsList[this.currentWordIndex];
       if (activeWord) {
         this.dom.currentAyahBadge.textContent = activeWord.ayah;
@@ -375,37 +489,33 @@ class MusammeApp {
     }
   }
 
-  // المعالجة الدقيقة للكلمة المنطوقة من الميكروفون
+  // المعالجة الدقيقة للكلمة المنطوقة
   async handleSpokenToken(token) {
     if (this.currentWordIndex >= this.wordsList.length) return;
 
     const spoken = token.text;
-    const isFinal = token.isFinal;
     const expected = this.wordsList[this.currentWordIndex];
 
-    // 1. هل الكلمة المنطوقة تطابق الكلمة الحالية المتوقعة؟
+    // 1. هل الكلمة مطابقة للكلمة الحالية؟
     if (isWordMatch(spoken, expected.uthmani)) {
       this.markWordCorrect(this.currentWordIndex);
       this.currentWordIndex++;
       this.highlightActiveWord();
 
-      // فحص إتمام كامل الآيات
       if (this.currentWordIndex >= this.wordsList.length) {
         setTimeout(() => this.finishSession(), 500);
       }
       return;
     }
 
-    // 2. هل القارئ تجاوز كلمة (نسيها) وانتقل للكلمة التي تليها مباشرة؟
+    // 2. هل القارئ تجاوز كلمة (نسيها) وانتقل للتالية؟
     if (this.currentWordIndex + 1 < this.wordsList.length) {
       const nextExpected = this.wordsList[this.currentWordIndex + 1];
       if (isWordMatch(spoken, nextExpected.uthmani)) {
-        // نعم! القارئ نسي الكلمة الحالية وقرأ الكلمة التالية
         await this.markWordMistake(this.currentWordIndex, 'نسيان أو تجاوز كلمة');
         
-        // تأكيد الكلمة المقروءة والتقدم للأمام
-        this.currentWordIndex++; // تجاوز الكلمة المنسية
-        this.markWordCorrect(this.currentWordIndex); // تمييز الكلمة التي نطقها
+        this.currentWordIndex++;
+        this.markWordCorrect(this.currentWordIndex);
         this.currentWordIndex++;
         this.highlightActiveWord();
 
@@ -415,14 +525,9 @@ class MusammeApp {
         return;
       }
     }
-
-    // ملاحظة أمان جوهرية:
-    // إذا كانت الكلمة غير مطابقة، لا نقوم أبداً بتمييز الكلمة الحالية كخطأ تلقائياً!
-    // لأن القارئ قد يكون لم يكمل نطق الكلمة بعد، أو هناك صوت تنفس/ضوضاء في الخلفية.
-    // تظل الكلمة تنتظر القارئ حتى ينطقها بشكل سليم.
   }
 
-  // تمييز الكلمة بأنها صحيحة (باللون الأخضر)
+  // تمييز الكلمة صحيحة
   markWordCorrect(index) {
     const el = document.getElementById(`qword-${index}`);
     if (el) {
@@ -432,16 +537,15 @@ class MusammeApp {
     if (wordObj) {
       wordObj.status = 'correct';
       
-      // إذا كانت آخر كلمة في الآية، نغمة نجاح خفيفة وتفريغ البفر لتبدأ الآية التالية نظيفة
       const isLastInAyah = (index === this.wordsList.length - 1) || (this.wordsList[index + 1].ayah !== wordObj.ayah);
       if (isLastInAyah) {
         feedback.playAyahSuccess();
-        this.speechEngine.clearBuffer(); // تفريغ أي كلمات قديمة من الآية السابقة!
+        this.speechEngine.clearBuffer();
       }
     }
   }
 
-  // تمييز الكلمة كخطأ مع التنبيه ونطق التصحيح بصوت الشيخ
+  // تمييز الكلمة كخطأ مع التنبيه ونطق التصحيح
   async markWordMistake(index, reason = '') {
     const wordObj = this.wordsList[index];
     if (!wordObj || wordObj.status === 'mistake') return;
@@ -457,7 +561,6 @@ class MusammeApp {
 
     this.dom.mistakesCountBadge.textContent = this.mistakesCount;
 
-    // 1. التظليل الأحمر البصري
     const el = document.getElementById(`qword-${index}`);
     if (el) {
       el.className = 'quran-word mistake';
@@ -468,20 +571,17 @@ class MusammeApp {
       }, 2500);
     }
 
-    // 2. إيقاف التعرف الصوتي مؤقتاً أثناء نطق التصحيح لمنع التقاط صوت الهاتف نفسه
     const wasListening = this.speechEngine.isListening && !this.speechEngine.isPaused;
     if (wasListening) {
       this.isProcessingMistake = true;
       this.speechEngine.pause();
     }
 
-    // 3. نطق التصحيح بصوت الشيخ كلمة بكلمة + الاهتزاز
     try {
       await feedback.playCorrection(wordObj.surah, wordObj.ayah, wordObj.position);
     } catch (e) {
       console.warn('Correction playback issue:', e);
     } finally {
-      // 4. استئناف الاستماع بعد انتهاء نطق الكلمة
       if (wasListening) {
         setTimeout(() => {
           this.isProcessingMistake = false;
@@ -491,7 +591,7 @@ class MusammeApp {
     }
   }
 
-  // الاستماع للكلمة الحالية بصوت الشيخ عند الضغط على زر 🔊
+  // الاستماع للكلمة الحالية بصوت الشيخ
   async listenToCurrentWord() {
     if (this.currentWordIndex >= this.wordsList.length) return;
     const wordObj = this.wordsList[this.currentWordIndex];
@@ -522,13 +622,10 @@ class MusammeApp {
     const currentWord = this.wordsList[Math.min(this.currentWordIndex, this.wordsList.length - 1)];
     const currentAyah = currentWord.ayah;
 
-    // العثور على أول كلمة في هذه الآية
     const firstWordIndex = this.wordsList.findIndex(w => w.ayah === currentAyah);
     if (firstWordIndex !== -1) {
-      // تصفير بفر الصوت
       this.speechEngine.clearBuffer();
 
-      // إعادة تصفير حالة كلمات الآية من نقطة البداية
       for (let i = firstWordIndex; i <= this.currentWordIndex; i++) {
         const el = document.getElementById(`qword-${i}`);
         if (el) el.className = 'quran-word pending';
@@ -551,7 +648,6 @@ class MusammeApp {
     this.dom.scorePercent.textContent = `${score}%`;
     this.dom.resultsSummaryText.textContent = `أتممت تسميع ${this.endAyahNum - this.startAyahNum + 1} آيات (${totalWords} كلمة). الأخطاء: ${this.mistakesCount}`;
 
-    // عرض قائمة الأخطاء للمراجعة
     if (this.mistakesList.length > 0) {
       this.dom.mistakesSection.style.display = 'block';
       this.dom.mistakesList.innerHTML = '';
@@ -578,7 +674,6 @@ class MusammeApp {
     let nextEnd = nextStart + rangeSpan - 1;
 
     if (nextStart > this.currentSurah.ayahs) {
-      // الانتقال للسورة التالية
       const nextSurahId = this.currentSurah.id + 1;
       if (nextSurahId <= 114) {
         this.dom.surahSelect.value = nextSurahId;
@@ -647,7 +742,6 @@ class MusammeApp {
         await navigator.share(shareData);
       } catch (err) {}
     } else {
-      // نسخ الرابط للحافظة
       try {
         await navigator.clipboard.writeText(window.location.href);
         alert('تم نسخ رابط التطبيق بنجاح لمشاركته مع الآخرين.');

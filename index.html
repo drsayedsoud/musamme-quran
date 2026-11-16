@@ -36,12 +36,17 @@
           <span>📲</span> تثبيت
         </button>
 
+        <!-- زر الإعدادات ومحرك الصوت -->
+        <button id="btnOpenSettings" class="btn-icon" title="الإعدادات ومحرك الذكاء الاصطناعي">
+          ⚙️
+        </button>
+
         <!-- زر المشاركة -->
         <button id="btnShareApp" class="btn-icon" title="مشاركة التطبيق">
           📤
         </button>
 
-        <!-- زر كتم/تفعيل التنبيهات -->
+        <!-- زر كتم/تفعيل التنبيهات السريع -->
         <button id="btnSoundToggle" class="btn-icon" title="تنبيهات الصوت">
           🔔
         </button>
@@ -51,6 +56,12 @@
     <!-- 1. شاشة الإعداد واختيار النطاق -->
     <main id="setupView" class="view active">
       <div class="setup-card">
+        <!-- شريط محرك الصوت النشط حالياً -->
+        <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-secondary); padding: 0.5rem 0.85rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-size: 0.8rem;">
+          <span style="color: var(--text-muted);">محرك الصوت الحالي:</span>
+          <span id="activeEngineBadge" class="engine-badge cloud">🌐 المحرك السحابي السريع</span>
+        </div>
+
         <!-- اختيار السورة -->
         <div class="form-group">
           <label class="form-label" for="surahSelect">
@@ -224,6 +235,74 @@
             الآيات التالية
           </button>
         </div>
+      </div>
+    </div>
+
+    <!-- 4. نافذة الإعدادات واختيار محرك الذكاء الاصطناعي (Settings Modal) -->
+    <div id="settingsModal" class="modal-overlay">
+      <div class="modal-card" style="max-width: 500px;">
+        <div class="settings-header">
+          <h2 style="color: var(--primary-gold); font-size: 1.25rem;">⚙️ إعدادات التطبيق</h2>
+          <button id="btnCloseSettings" class="btn-icon" style="width: 32px; height: 32px;">✕</button>
+        </div>
+
+        <div class="settings-body">
+          <div class="setting-section">
+            <div class="setting-title">
+              <span>🧠 محرك التعرف الصوتي (الذكاء الاصطناعي)</span>
+            </div>
+            <p style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.5;">
+              اختر بين المعالجة السحابية الخفيفة، أو تنزيل حزمة الذكاء الاصطناعي المحلي للعمل بصفر إنترنت تماماً.
+            </p>
+
+            <!-- الخيار الأول: المحرك السحابي -->
+            <div id="optEngineCloud" class="engine-option-card selected">
+              <div class="engine-card-header">
+                <div>
+                  <b style="font-size: 0.9rem; color: var(--text-primary);">🌐 المحرك السحابي السريع (الافتراضي)</b>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">خفيف جداً، لا يستهلك أي مساحة من ذاكرة هاتفك.</div>
+                </div>
+                <span class="engine-badge cloud">مفعل</span>
+              </div>
+            </div>
+
+            <!-- الخيار الثاني: الذكاء الاصطناعي المحلي أوفلاين -->
+            <div id="optEngineOffline" class="engine-option-card">
+              <div class="engine-card-header">
+                <div>
+                  <b style="font-size: 0.9rem; color: var(--primary-gold);">📴 الذكاء الاصطناعي المحلي (On-Device)</b>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">صفر إنترنت للأبد (يعمل في وضع الطيران). حجم الحزمة: 39 ميجابايت.</div>
+                </div>
+                <span id="offlineModelStatusBadge" class="engine-badge" style="background: rgba(255,255,255,0.08); color: var(--text-muted);">غير محمل</span>
+              </div>
+
+              <!-- أزرار التحكم في الحزمة -->
+              <div style="display: flex; gap: 0.5rem; margin-top: 0.35rem;">
+                <button id="btnDownloadModel" class="btn-small download">
+                  <span>📥</span> تحميل الحزمة (39MB)
+                </button>
+                <button id="btnDeleteModel" class="btn-small delete" style="display: none;">
+                  <span>🗑️</span> حذف وتفريغ المساحة
+                </button>
+              </div>
+
+              <!-- شريط تقدم التحميل -->
+              <div id="downloadProgressContainer" class="progress-container">
+                <div class="progress-label">
+                  <span id="progressStatusText">جاري التنزيل...</span>
+                  <span id="progressPercentText">0%</span>
+                </div>
+                <div class="progress-track">
+                  <div id="progressBarFill" class="progress-fill"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button id="btnSaveSettings" class="btn-start-recitation" style="padding: 0.75rem; font-size: 0.95rem;">
+          تم وحفظ
+        </button>
       </div>
     </div>
   </div>
