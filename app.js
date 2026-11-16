@@ -1,5 +1,6 @@
 /**
  * مُسَمِّع - المتحكم الرئيسي للتطبيق (Application Controller)
+ * مع خاصية "الفتح على القارئ" بنطق الكلمة الصحيحة بصوت الشيخ كلمة بكلمة
  */
 
 import { SURAHS } from './quran-data.js';
@@ -23,6 +24,7 @@ class MusammeApp {
     this.mistakesCount = 0;
     this.mistakesList = [];
     this.deferredInstallPrompt = null;
+    this.isProcessingMistake = false;
 
     // عناصر الواجهة
     this.dom = {
@@ -43,6 +45,7 @@ class MusammeApp {
       totalAyahsLabel: document.getElementById('totalAyahsLabel'),
       modeHafizBtn: document.getElementById('modeHafizBtn'),
       modeReviewBtn: document.getElementById('modeReviewBtn'),
+      chkSpeakCorrection: document.getElementById('chkSpeakCorrection'),
       chkAudioAlert: document.getElementById('chkAudioAlert'),
       chkVibrateAlert: document.getElementById('chkVibrateAlert'),
       btnStart: document.getElementById('btnStart'),
@@ -55,6 +58,7 @@ class MusammeApp {
       quranCanvas: document.getElementById('quranCanvas'),
       btnMicToggle: document.getElementById('btnMicToggle'),
       btnRepeatAyah: document.getElementById('btnRepeatAyah'),
+      btnListenWord: document.getElementById('btnListenWord'),
       btnExitRecite: document.getElementById('btnExitRecite'),
       btnFinishRecite: document.getElementById('btnFinishRecite'),
 
@@ -158,7 +162,11 @@ class MusammeApp {
       this.dom.modeHafizBtn.classList.remove('active');
     });
 
-    // خيارات التنبيه
+    // خيارات التنبيه ونطق التصحيح
+    this.dom.chkSpeakCorrection.addEventListener('change', (e) => {
+      feedback.speakCorrectionEnabled = e.target.checked;
+    });
+
     this.dom.chkAudioAlert.addEventListener('change', (e) => {
       feedback.soundEnabled = e.target.checked;
     });
@@ -193,6 +201,11 @@ class MusammeApp {
       this.repeatCurrentAyah();
     });
 
+    // زر الاستماع لنطق الكلمة الحالية بصوت الشيخ
+    this.dom.btnListenWord.addEventListener('click', () => {
+      this.listenToCurrentWord();
+    });
+
     this.dom.btnExitRecite.addEventListener('click', () => {
       if (confirm('هل تريد إنهاء جلسة التسميع الحالية والعودة للقائمة؟')) {
         this.stopSession();
@@ -224,6 +237,7 @@ class MusammeApp {
   // إعداد استجابات التعرف الصوتي
   setupSpeechCallbacks() {
     this.speechEngine.onWordsRecognized = (words) => {
+      if (this.isProcessingMistake) return; // عدم التداخل أثناء نطق التصحيح
       this.processSpokenWords(words);
     };
 
@@ -316,6 +330,12 @@ class MusammeApp {
       span.id = `qword-${idx}`;
       span.className = 'quran-word pending';
       span.textContent = wordObj.uthmani;
+      
+      // النقر على الكلمة للاستماع إليها مباشرة
+      span.addEventListener('click', () => {
+        feedback.playWordAudio(wordObj.surah, wordObj.ayah, wordObj.position);
+      });
+
       this.dom.quranCanvas.appendChild(span);
 
       lastAyah = wordObj.ayah;
@@ -354,7 +374,7 @@ class MusammeApp {
   }
 
   // معالجة تدفق الكلمات المنطوقة من الميكروفون
-  processSpokenWords(spokenTokens) {
+  async processSpokenWords(spokenTokens) {
     if (this.currentWordIndex >= this.wordsList.length) return;
 
     for (const spoken of spokenTokens) {
@@ -374,8 +394,8 @@ class MusammeApp {
       if (this.currentWordIndex + 1 < this.wordsList.length) {
         const nextExpected = this.wordsList[this.currentWordIndex + 1];
         if (isWordMatch(spoken, nextExpected.uthmani)) {
-          // تسجيل الكلمة التي تم نسيانها كخطأ
-          this.markWordMistake(this.currentWordIndex, 'نسيان أو تجاوز كلمة');
+          // تسجيل ونطق الكلمة التي تم نسيانها كخطأ وتصحيح
+          await this.markWordMistake(this.currentWordIndex, 'نسيان أو تجاوز كلمة');
           
           // تأكيد الكلمة الحالية والانتقال لما بعدها
           this.currentWordIndex++;
@@ -390,7 +410,7 @@ class MusammeApp {
       const normSpoken = normalizeQuranText(spoken);
       if (normSpoken.length >= 3 && !['في', 'من', 'على', 'ما', 'لا', 'ان'].includes(normSpoken)) {
         // خطأ نطق واضح في الكلمة الحالية
-        this.markWordMistake(this.currentWordIndex, `نطق "${spoken}" بدلاً من "${expected.uthmani}"`);
+        await this.markWordMistake(this.currentWordIndex, `نطق "${spoken}" بدلاً من "${expected.uthmani}"`);
       }
     }
 
@@ -418,10 +438,10 @@ class MusammeApp {
     }
   }
 
-  // تمييز الكلمة كخطأ مع التنبيه الصوتي والاهتزاز
-  markWordMistake(index, reason = '') {
+  // تمييز الكلمة كخطأ مع التنبيه ونطق التصحيح بصوت الشيخ
+  async markWordMistake(index, reason = '') {
     const wordObj = this.wordsList[index];
-    if (!wordObj || wordObj.status === 'mistake') return; // عدم تكرار التنبيه لنفس الكلمة
+    if (!wordObj || wordObj.status === 'mistake') return;
 
     wordObj.status = 'mistake';
     this.mistakesCount++;
@@ -434,19 +454,62 @@ class MusammeApp {
 
     this.dom.mistakesCountBadge.textContent = this.mistakesCount;
 
-    // 1. إعطاء التنبيه الصوتي واللمسي فوراً
-    feedback.playMistakeAlert();
-
-    // 2. التظليل الأحمر البصري
+    // 1. التظليل الأحمر البصري
     const el = document.getElementById(`qword-${index}`);
     if (el) {
       el.className = 'quran-word mistake';
-      // إزالة وميض الخطأ بعد ثانيتين ليعود طبيعياً
       setTimeout(() => {
-        if (el.classList.contains('mistake')) {
+        if (el && el.classList.contains('mistake')) {
           el.style.boxShadow = 'none';
         }
-      }, 2000);
+      }, 2500);
+    }
+
+    // 2. إيقاف التعرف الصوتي مؤقتاً أثناء نطق التصحيح لمنع التقاط صوت الهاتف نفسه
+    const wasListening = this.speechEngine.isListening && !this.speechEngine.isPaused;
+    if (wasListening) {
+      this.isProcessingMistake = true;
+      this.speechEngine.pause();
+    }
+
+    // 3. نطق التصحيح بصوت الشيخ كلمة بكلمة + الاهتزاز
+    try {
+      await feedback.playCorrection(wordObj.surah, wordObj.ayah, wordObj.position);
+    } catch (e) {
+      console.warn('Correction playback issue:', e);
+    } finally {
+      // 4. استئناف الاستماع بعد انتهاء نطق الكلمة
+      if (wasListening) {
+        setTimeout(() => {
+          this.isProcessingMistake = false;
+          this.speechEngine.resume();
+        }, 300);
+      }
+    }
+  }
+
+  // الاستماع للكلمة الحالية بصوت الشيخ عند الضغط على زر 🔊
+  async listenToCurrentWord() {
+    if (this.currentWordIndex >= this.wordsList.length) return;
+    const wordObj = this.wordsList[this.currentWordIndex];
+
+    const wasListening = this.speechEngine.isListening && !this.speechEngine.isPaused;
+    if (wasListening) {
+      this.isProcessingMistake = true;
+      this.speechEngine.pause();
+    }
+
+    try {
+      await feedback.playWordAudio(wordObj.surah, wordObj.ayah, wordObj.position);
+    } catch (e) {
+      console.warn('Word audio error:', e);
+    } finally {
+      if (wasListening) {
+        setTimeout(() => {
+          this.isProcessingMistake = false;
+          this.speechEngine.resume();
+        }, 300);
+      }
     }
   }
 
@@ -569,7 +632,7 @@ class MusammeApp {
   async shareApp() {
     const shareData = {
       title: 'تطبيق مُسَمِّع للقرآن الكريم',
-      text: 'جرّب تطبيق مُسَمِّع لتسميع القرآن الكريم ومقارنة حفظك لحظياً مع التنبيه الصوتي واللمسي عند الخطأ!',
+      text: 'جرّب تطبيق مُسَمِّع لتسميع القرآن الكريم ومقارنة حفظك لحظياً مع التنبيه والفتح بصوت الشيخ عند الخطأ!',
       url: window.location.href
     };
 

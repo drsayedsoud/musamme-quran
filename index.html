@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>مُسَمِّع | رفيق حفظ القرآن الذكي</title>
   
-  <meta name="description" content="تطبيق ذكي لتسميع القرآن الكريم ومقارنة الحفظ لحظياً والتنبيه بالصوت والاهتزاز عند الخطأ">
+  <meta name="description" content="تطبيق ذكي لتسميع القرآن الكريم ومقارنة الحفظ لحظياً والتنبيه بالصوت والاهتزاز ونطق التصحيح عند الخطأ">
   <meta name="theme-color" content="#0a1412">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -102,17 +102,30 @@
           </div>
         </div>
 
-        <!-- خيارات التنبيه -->
+        <!-- خيارات التنبيه ونطق التصحيح -->
         <div class="form-group" style="border-top: 1px solid var(--border-color); padding-top: 0.75rem;">
+          <!-- الفتح على القارئ بصوت الشيخ -->
           <div class="toggle-row">
-            <span style="font-size: 0.9rem;">صوت التنبيه عند الخطأ</span>
+            <div>
+              <div style="font-size: 0.9rem; font-weight: bold; color: var(--primary-gold);">الفتح على القارئ (نطق التصحيح) 🎙️</div>
+              <div style="font-size: 0.72rem; color: var(--text-muted);">نطق الكلمة الصحيحة بصوت الشيخ عند الخطأ</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="chkSpeakCorrection" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="toggle-row">
+            <span style="font-size: 0.88rem;">صوت التنبيه (الرنين الهادئ)</span>
             <label class="toggle-switch">
               <input type="checkbox" id="chkAudioAlert" checked>
               <span class="slider"></span>
             </label>
           </div>
+
           <div class="toggle-row">
-            <span style="font-size: 0.9rem;">اهتزاز الهاتف عند الخطأ</span>
+            <span style="font-size: 0.88rem;">اهتزاز الهاتف عند الخطأ</span>
             <label class="toggle-switch">
               <input type="checkbox" id="chkVibrateAlert" checked>
               <span class="slider"></span>
@@ -160,6 +173,11 @@
         <!-- زر إعادة الآية الحالية -->
         <button id="btnRepeatAyah" class="btn-action-round" title="إعادة الآية الحالية">
           🔄
+        </button>
+
+        <!-- زر استماع للكلمة الحالية بصوت الشيخ -->
+        <button id="btnListenWord" class="btn-action-round" title="استمع لنطق الكلمة الحالية بصوت الشيخ">
+          🔊
         </button>
 
         <!-- زر الميكروفون الرئيسي -->

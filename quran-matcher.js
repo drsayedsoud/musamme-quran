@@ -71,7 +71,6 @@ export function isWordMatch(spokenRaw, expectedRaw) {
   if (spoken === expected) return true;
 
   // 2. مطابقة بادئات العطف والجر (الواو، الفاء، الباء، الكاف، اللام)
-  // مثال: القارئ نطق "والسماء" بينما هي "السماء" أو العكس
   const prefixes = ['و', 'ف', 'ب', 'ل', 'ك'];
   for (const p of prefixes) {
     if (spoken === p + expected || expected === p + spoken) {
@@ -104,7 +103,7 @@ export function parseAyahIntoWords(uthmaniText, surahId, ayahNumber) {
       id: `${surahId}:${ayahNumber}:${index}`,
       surah: surahId,
       ayah: ayahNumber,
-      position: index,
+      position: index + 1, // 1-indexed (الموقع الدقيق لملف صوت الكلمة)
       uthmani: word,
       normalized: normalizeQuranText(word),
       status: 'pending' // pending | active | correct | mistake | skipped
